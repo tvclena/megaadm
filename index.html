@@ -2,7 +2,8 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
-<title>ADM • Mega da Virada</title>
+<title>Mega da Virada • Jogos</title>
+
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -17,56 +18,58 @@ body{
 
 /* HEADER */
 header{
-  padding:16px;
+  padding:14px 12px;
   text-align:center;
+  background:linear-gradient(180deg,#1a1400,#0b0b0b);
   border-bottom:1px solid #d4af3744;
 }
 header h1{
   margin:0;
-  color:#d4af37;
   font-size:18px;
+  color:#d4af37;
+}
+header span{
+  font-size:12px;
+  color:#ffeb99;
 }
 
-/* LAYOUT */
-.container{
+/* LISTA DE JOGOS */
+.lista{
   padding:14px;
   display:grid;
+  grid-template-columns:1fr;
   gap:14px;
 }
 
-/* CARD */
 .card{
   background:#141414;
   border:1px solid #d4af3744;
-  border-radius:16px;
+  border-radius:18px;
   padding:14px;
+  box-shadow:0 6px 16px rgba(0,0,0,.35);
 }
+
 .card.win{
   background:#16a34a;
   border-color:#22c55e;
   color:#000;
 }
 
-/* BOTÃO */
-button{
-  width:100%;
-  padding:12px;
-  border:none;
-  border-radius:12px;
-  background:#d4af37;
-  color:#000;
-  font-weight:700;
-  cursor:pointer;
+.card h3{
+  margin:0 0 6px;
+  font-size:13px;
+  letter-spacing:.4px;
+  color:#ffeb99;
 }
 
 /* NUMEROS */
 .numeros{
   display:flex;
   flex-wrap:wrap;
-  gap:6px;
+  gap:8px;
 }
 .num{
-  width:32px;height:32px;
+  width:34px;height:34px;
   border-radius:50%;
   display:flex;
   align-items:center;
@@ -78,57 +81,24 @@ button{
 .num.hit{
   background:#22c55e;
   color:#000;
+  border-color:#22c55e;
   font-weight:700;
 }
 
-/* POPUP */
-.overlay{
-  position:fixed;
-  inset:0;
-  background:rgba(0,0,0,.75);
-  display:none;
-  align-items:center;
-  justify-content:center;
-  z-index:10;
+/* ACERTOS */
+.acertos{
+  margin-top:8px;
+  font-size:12px;
+  font-weight:600;
+  opacity:.9;
 }
-.modal{
-  width:90%;
-  max-width:360px;
-  background:#141414;
-  border-radius:16px;
-  padding:16px;
-  border:1px solid #d4af3744;
-}
-.modal h3{
-  margin:0 0 12px;
+
+/* FOOTER */
+footer{
   text-align:center;
-  color:#ffeb99;
-}
-.inputs{
-  display:grid;
-  grid-template-columns:repeat(6,1fr);
-  gap:8px;
-}
-.inputs input{
-  padding:10px;
-  border-radius:8px;
-  border:1px solid #333;
-  background:#0f0f0f;
-  color:#fff;
-  text-align:center;
-  font-size:15px;
-}
-.modal-actions{
-  margin-top:14px;
-  display:flex;
-  gap:10px;
-}
-.modal-actions button{
-  flex:1;
-}
-.cancel{
-  background:#333;
-  color:#fff;
+  padding:14px;
+  font-size:11px;
+  color:#777;
 }
 </style>
 </head>
@@ -136,91 +106,64 @@ button{
 <body>
 
 <header>
-  <h1>🎯 ADM Mega da Virada</h1>
+  <h1>🎆 Mega da Virada</h1>
+  <span>Acompanhamento dos Jogos</span>
 </header>
 
-<div class="container">
+<!-- LISTA DE JOGOS -->
+<div class="lista" id="lista"></div>
 
-  <!-- BOTÃO -->
-  <div class="card">
-    <button onclick="abrirModal()">Inserir Resultado</button>
-  </div>
-
-  <!-- JOGOS -->
-  <div id="lista"></div>
-
-</div>
-
-<!-- POPUP -->
-<div class="overlay" id="overlay">
-  <div class="modal">
-    <h3>Resultado Oficial</h3>
-
-    <div class="inputs">
-      <input id="n1"><input id="n2"><input id="n3">
-      <input id="n4"><input id="n5"><input id="n6">
-    </div>
-
-    <div class="modal-actions">
-      <button class="cancel" onclick="fecharModal()">Cancelar</button>
-      <button onclick="salvarResultado()">Salvar</button>
-    </div>
-  </div>
-</div>
+<footer>
+  Atualização automática • Boa sorte 🍀
+</footer>
 
 <script>
 /* SUPABASE */
-const client = supabase.createClient(
+const supabase = supabase.createClient(
   'https://dxkszikemntfusfyrzos.supabase.co',
   'sb_publishable_NNFvdfSXgOdGGVcSbphbjQ_brC3_9ed'
 );
 
-let resultado = [];
+let resultadoAtual = [];
 
-/* MODAL */
-function abrirModal(){
-  document.getElementById('overlay').style.display='flex';
-}
-function fecharModal(){
-  document.getElementById('overlay').style.display='none';
-}
-
-/* RESULTADO */
+/* BUSCA RESULTADO (INVISÍVEL) */
 async function carregarResultado(){
-  const {data} = await client
+  const { data } = await supabase
     .from('mega_resultado')
     .select('numeros')
-    .order('created_at',{ascending:false})
+    .order('created_at', { ascending:false })
     .limit(1)
     .single();
 
-  resultado = data?.numeros || [];
+  resultadoAtual = data?.numeros || [];
 }
 
-/* JOGOS */
+/* LISTA JOGOS */
 async function carregarJogos(){
-  const {data} = await client
+  const { data } = await supabase
     .from('mega_jogos')
     .select('*')
     .order('codigo');
 
   const lista = document.getElementById('lista');
-  lista.innerHTML='';
+  lista.innerHTML = '';
 
-  data.forEach(j=>{
-    const acertos = j.numeros.filter(n=>resultado.includes(n)).length;
+  data.forEach(jogo=>{
+    const acertos = jogo.numeros.filter(n=>resultadoAtual.includes(n)).length;
 
     lista.innerHTML += `
       <div class="card ${acertos===6?'win':''}">
-        <strong>${j.codigo}</strong>
+        <h3>${jogo.codigo}</h3>
+
         <div class="numeros">
-          ${j.numeros.map(n=>`
-            <div class="num ${resultado.includes(n)?'hit':''}">
+          ${jogo.numeros.map(n=>`
+            <div class="num ${resultadoAtual.includes(n)?'hit':''}">
               ${String(n).padStart(2,'0')}
             </div>
           `).join('')}
         </div>
-        <div style="margin-top:6px;font-size:12px">
+
+        <div class="acertos">
           Acertos: ${acertos}
         </div>
       </div>
@@ -228,24 +171,7 @@ async function carregarJogos(){
   });
 }
 
-/* SALVAR */
-async function salvarResultado(){
-  const nums = [n1,n2,n3,n4,n5,n6]
-    .map(i=>parseInt(i.value))
-    .filter(n=>n>=1 && n<=60);
-
-  if(nums.length !== 6 || new Set(nums).size !== 6){
-    alert('Informe 6 números válidos (1 a 60, sem repetir)');
-    return;
-  }
-
-  await client.from('mega_resultado').insert({ numeros: nums });
-
-  fecharModal();
-  [n1,n2,n3,n4,n5,n6].forEach(i=>i.value='');
-  init();
-}
-
+/* INIT */
 async function init(){
   await carregarResultado();
   await carregarJogos();
@@ -253,8 +179,8 @@ async function init(){
 
 init();
 
-/* REALTIME */
-client.channel('mega-admin')
+/* REALTIME: ATUALIZA SOZINHO QUANDO O ADM SALVAR */
+supabase.channel('mega-realtime')
 .on('postgres_changes',{
   event:'INSERT',
   schema:'public',
