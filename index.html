@@ -14,8 +14,6 @@ body{
   background:radial-gradient(circle at top,#3a2c00,#0b0b0b);
   color:#fff;
 }
-
-/* HEADER */
 header{
   padding:16px;
   text-align:center;
@@ -26,36 +24,22 @@ header h1{
   color:#d4af37;
   font-size:18px;
 }
-
-/* LAYOUT */
 .container{
   padding:14px;
   display:grid;
-  grid-template-columns:1fr;
   gap:14px;
 }
-
-/* CARD */
 .card{
   background:#141414;
   border:1px solid #d4af3744;
   border-radius:16px;
   padding:14px;
 }
-
 .card.win{
   background:#16a34a;
   border-color:#22c55e;
   color:#000;
 }
-
-.card h3{
-  margin:0 0 10px;
-  font-size:14px;
-  color:#ffeb99;
-}
-
-/* INPUT RESULTADO */
 .inputs{
   display:grid;
   grid-template-columns:repeat(6,1fr);
@@ -68,9 +52,7 @@ header h1{
   background:#0f0f0f;
   color:#fff;
   text-align:center;
-  font-size:15px;
 }
-
 button{
   margin-top:12px;
   width:100%;
@@ -82,8 +64,6 @@ button{
   font-weight:700;
   cursor:pointer;
 }
-
-/* NUMEROS */
 .numeros{
   display:flex;
   flex-wrap:wrap;
@@ -104,8 +84,6 @@ button{
   color:#000;
   font-weight:700;
 }
-
-/* ACERTOS */
 .acertos{
   margin-top:8px;
   font-size:13px;
@@ -127,15 +105,11 @@ button{
     <h3>Inserir Resultado</h3>
 
     <div class="inputs">
-      <input id="n1" maxlength="2">
-      <input id="n2" maxlength="2">
-      <input id="n3" maxlength="2">
-      <input id="n4" maxlength="2">
-      <input id="n5" maxlength="2">
-      <input id="n6" maxlength="2">
+      <input id="n1"><input id="n2"><input id="n3">
+      <input id="n4"><input id="n5"><input id="n6">
     </div>
 
-    <button onclick="salvarResultado()">Salvar Resultado</button>
+    <button id="btnSalvar">Salvar Resultado</button>
   </div>
 
   <!-- JOGOS -->
@@ -144,39 +118,43 @@ button{
 </div>
 
 <script>
-const supabase = supabase.createClient(
+/* 🔴 APENAS UM SUPABASE */
+const client = supabase.createClient(
   'https://dxkszikemntfusfyrzos.supabase.co',
   'sb_publishable_NNFvdfSXgOdGGVcSbphbjQ_brC3_9ed'
 );
 
 let resultado = [];
 
-// resultado
+/* RESULTADO */
 async function carregarResultado(){
-  const {data} = await supabase
+  const { data } = await client
     .from('mega_resultado')
     .select('numeros')
     .order('created_at',{ascending:false})
     .limit(1)
     .single();
+
   resultado = data?.numeros || [];
 }
 
-// jogos
+/* JOGOS */
 async function carregarJogos(){
-  const {data} = await supabase
+  const { data } = await client
     .from('mega_jogos')
     .select('*')
     .order('codigo');
 
   const lista = document.getElementById('lista');
-  lista.innerHTML='';
+  lista.innerHTML = '';
 
   data.forEach(j=>{
-    const acertos = j.numeros.filter(n=>resultado.includes(n)).length;
+    const acertos = j.numeros.filter(n => resultado.includes(n)).length;
+
     lista.innerHTML += `
       <div class="card ${acertos===6?'win':''}">
-        <h3>${j.codigo}</h3>
+        <strong>${j.codigo}</strong>
+
         <div class="numeros">
           ${j.numeros.map(n=>`
             <div class="num ${resultado.includes(n)?'hit':''}">
@@ -184,28 +162,29 @@ async function carregarJogos(){
             </div>
           `).join('')}
         </div>
+
         <div class="acertos">Acertos: ${acertos}</div>
       </div>
     `;
   });
 }
 
-async function salvarResultado(){
-  const nums = [
-    n1.value,n2.value,n3.value,
-    n4.value,n5.value,n6.value
-  ].map(n=>parseInt(n)).filter(n=>!isNaN(n));
+/* SALVAR */
+document.getElementById('btnSalvar').onclick = async () => {
+  const nums = [n1,n2,n3,n4,n5,n6]
+    .map(i=>parseInt(i.value))
+    .filter(n=>!isNaN(n));
 
-  if(nums.length!==6){
+  if(nums.length !== 6){
     alert('Preencha os 6 números');
     return;
   }
 
-  await supabase.from('mega_resultado').insert({numeros:nums});
+  await client.from('mega_resultado').insert({ numeros: nums });
 
-  n1.value=n2.value=n3.value=n4.value=n5.value=n6.value='';
+  [n1,n2,n3,n4,n5,n6].forEach(i=>i.value='');
   init();
-}
+};
 
 async function init(){
   await carregarResultado();
@@ -214,8 +193,8 @@ async function init(){
 
 init();
 
-// realtime
-supabase.channel('mega-admin')
+/* REALTIME */
+client.channel('mega-admin')
 .on('postgres_changes',{
   event:'INSERT',
   schema:'public',
