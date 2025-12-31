@@ -14,6 +14,8 @@ body{
   background:radial-gradient(circle at top,#3a2c00,#0b0b0b);
   color:#fff;
 }
+
+/* HEADER */
 header{
   padding:16px;
   text-align:center;
@@ -24,11 +26,15 @@ header h1{
   color:#d4af37;
   font-size:18px;
 }
+
+/* LAYOUT */
 .container{
   padding:14px;
   display:grid;
   gap:14px;
 }
+
+/* CARD */
 .card{
   background:#141414;
   border:1px solid #d4af3744;
@@ -40,30 +46,20 @@ header h1{
   border-color:#22c55e;
   color:#000;
 }
-.inputs{
-  display:grid;
-  grid-template-columns:repeat(6,1fr);
-  gap:8px;
-}
-.inputs input{
-  padding:10px;
-  border-radius:8px;
-  border:1px solid #333;
-  background:#0f0f0f;
-  color:#fff;
-  text-align:center;
-}
+
+/* BOTÃO */
 button{
-  margin-top:12px;
   width:100%;
   padding:12px;
   border:none;
-  border-radius:10px;
+  border-radius:12px;
   background:#d4af37;
   color:#000;
   font-weight:700;
   cursor:pointer;
 }
+
+/* NUMEROS */
 .numeros{
   display:flex;
   flex-wrap:wrap;
@@ -84,10 +80,55 @@ button{
   color:#000;
   font-weight:700;
 }
-.acertos{
-  margin-top:8px;
-  font-size:13px;
-  font-weight:600;
+
+/* POPUP */
+.overlay{
+  position:fixed;
+  inset:0;
+  background:rgba(0,0,0,.75);
+  display:none;
+  align-items:center;
+  justify-content:center;
+  z-index:10;
+}
+.modal{
+  width:90%;
+  max-width:360px;
+  background:#141414;
+  border-radius:16px;
+  padding:16px;
+  border:1px solid #d4af3744;
+}
+.modal h3{
+  margin:0 0 12px;
+  text-align:center;
+  color:#ffeb99;
+}
+.inputs{
+  display:grid;
+  grid-template-columns:repeat(6,1fr);
+  gap:8px;
+}
+.inputs input{
+  padding:10px;
+  border-radius:8px;
+  border:1px solid #333;
+  background:#0f0f0f;
+  color:#fff;
+  text-align:center;
+  font-size:15px;
+}
+.modal-actions{
+  margin-top:14px;
+  display:flex;
+  gap:10px;
+}
+.modal-actions button{
+  flex:1;
+}
+.cancel{
+  background:#333;
+  color:#fff;
 }
 </style>
 </head>
@@ -100,16 +141,9 @@ button{
 
 <div class="container">
 
-  <!-- RESULTADO -->
+  <!-- BOTÃO -->
   <div class="card">
-    <h3>Inserir Resultado</h3>
-
-    <div class="inputs">
-      <input id="n1"><input id="n2"><input id="n3">
-      <input id="n4"><input id="n5"><input id="n6">
-    </div>
-
-    <button id="btnSalvar">Salvar Resultado</button>
+    <button onclick="abrirModal()">Inserir Resultado</button>
   </div>
 
   <!-- JOGOS -->
@@ -117,8 +151,25 @@ button{
 
 </div>
 
+<!-- POPUP -->
+<div class="overlay" id="overlay">
+  <div class="modal">
+    <h3>Resultado Oficial</h3>
+
+    <div class="inputs">
+      <input id="n1"><input id="n2"><input id="n3">
+      <input id="n4"><input id="n5"><input id="n6">
+    </div>
+
+    <div class="modal-actions">
+      <button class="cancel" onclick="fecharModal()">Cancelar</button>
+      <button onclick="salvarResultado()">Salvar</button>
+    </div>
+  </div>
+</div>
+
 <script>
-/* 🔴 APENAS UM SUPABASE */
+/* SUPABASE */
 const client = supabase.createClient(
   'https://dxkszikemntfusfyrzos.supabase.co',
   'sb_publishable_NNFvdfSXgOdGGVcSbphbjQ_brC3_9ed'
@@ -126,9 +177,17 @@ const client = supabase.createClient(
 
 let resultado = [];
 
+/* MODAL */
+function abrirModal(){
+  document.getElementById('overlay').style.display='flex';
+}
+function fecharModal(){
+  document.getElementById('overlay').style.display='none';
+}
+
 /* RESULTADO */
 async function carregarResultado(){
-  const { data } = await client
+  const {data} = await client
     .from('mega_resultado')
     .select('numeros')
     .order('created_at',{ascending:false})
@@ -140,21 +199,20 @@ async function carregarResultado(){
 
 /* JOGOS */
 async function carregarJogos(){
-  const { data } = await client
+  const {data} = await client
     .from('mega_jogos')
     .select('*')
     .order('codigo');
 
   const lista = document.getElementById('lista');
-  lista.innerHTML = '';
+  lista.innerHTML='';
 
   data.forEach(j=>{
-    const acertos = j.numeros.filter(n => resultado.includes(n)).length;
+    const acertos = j.numeros.filter(n=>resultado.includes(n)).length;
 
     lista.innerHTML += `
       <div class="card ${acertos===6?'win':''}">
         <strong>${j.codigo}</strong>
-
         <div class="numeros">
           ${j.numeros.map(n=>`
             <div class="num ${resultado.includes(n)?'hit':''}">
@@ -162,29 +220,31 @@ async function carregarJogos(){
             </div>
           `).join('')}
         </div>
-
-        <div class="acertos">Acertos: ${acertos}</div>
+        <div style="margin-top:6px;font-size:12px">
+          Acertos: ${acertos}
+        </div>
       </div>
     `;
   });
 }
 
 /* SALVAR */
-document.getElementById('btnSalvar').onclick = async () => {
+async function salvarResultado(){
   const nums = [n1,n2,n3,n4,n5,n6]
     .map(i=>parseInt(i.value))
-    .filter(n=>!isNaN(n));
+    .filter(n=>n>=1 && n<=60);
 
-  if(nums.length !== 6){
-    alert('Preencha os 6 números');
+  if(nums.length !== 6 || new Set(nums).size !== 6){
+    alert('Informe 6 números válidos (1 a 60, sem repetir)');
     return;
   }
 
   await client.from('mega_resultado').insert({ numeros: nums });
 
+  fecharModal();
   [n1,n2,n3,n4,n5,n6].forEach(i=>i.value='');
   init();
-};
+}
 
 async function init(){
   await carregarResultado();
