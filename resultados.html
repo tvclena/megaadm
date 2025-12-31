@@ -2,8 +2,7 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
-<title>Mega da Virada • Acompanhamento</title>
-
+<title>Mega da Virada • Resultados</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -18,104 +17,49 @@ body{
 
 /* HEADER */
 header{
-  padding:14px 12px;
+  padding:14px;
   text-align:center;
   background:linear-gradient(180deg,#1a1400,#0b0b0b);
   border-bottom:1px solid #d4af3744;
 }
-header h1{
-  margin:0;
-  font-size:18px;
-  color:#d4af37;
-}
-header span{
-  font-size:12px;
-  color:#ffeb99;
-}
+header h1{margin:0;color:#d4af37;font-size:18px}
+header span{font-size:12px;color:#ffeb99}
 
-/* RESULTADO CARD */
-.resultado-card{
-  margin:14px;
-  padding:14px;
-  background:#141414;
-  border:1px solid #d4af3744;
-  border-radius:18px;
-  text-align:center;
-}
-.resultado-card h2{
-  margin:0 0 10px;
-  font-size:14px;
-  color:#ffeb99;
-}
-
-.resultado{
-  display:flex;
-  justify-content:center;
-  gap:10px;
-  flex-wrap:wrap;
-}
-.bola{
-  width:44px;height:44px;
-  border-radius:50%;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  font-weight:700;
-  font-size:15px;
-  background:#1f1f1f;
-  border:2px solid #333;
-}
-.bola.hit{
-  background:#22c55e;
-  color:#000;
-  border-color:#22c55e;
-}
-
-/* LISTA DE JOGOS */
+/* LISTA */
 .lista{
   padding:14px;
   display:grid;
   grid-template-columns:1fr;
   gap:14px;
 }
-
 .card{
   background:#141414;
   border:1px solid #d4af3744;
   border-radius:18px;
   padding:14px;
-  box-shadow:0 6px 16px rgba(0,0,0,.35);
 }
-
 .card.win{
   background:#16a34a;
   border-color:#22c55e;
   color:#000;
 }
-
 .card h3{
   margin:0 0 6px;
   font-size:13px;
-  letter-spacing:.4px;
   color:#ffeb99;
 }
 
 /* NUMEROS */
-.numeros{
-  display:flex;
-  flex-wrap:wrap;
-  gap:8px;
-  margin-top:6px;
-}
+.numeros{display:flex;flex-wrap:wrap;gap:8px}
 .num{
   width:34px;height:34px;
   border-radius:50%;
   display:flex;
   align-items:center;
   justify-content:center;
-  font-size:13px;
   background:#1f1f1f;
   border:1px solid #333;
+  font-size:13px;
 }
 .num.hit{
   background:#22c55e;
@@ -124,20 +68,17 @@ header span{
   font-weight:700;
 }
 
-/* ACERTOS */
-.acertos{
-  margin-top:8px;
-  font-size:12px;
-  font-weight:600;
-  opacity:.9;
-}
-
-/* FOOTER */
-footer{
-  text-align:center;
-  padding:14px;
-  font-size:11px;
-  color:#777;
+/* LOADING */
+.loading{
+  position:fixed;
+  inset:0;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  background:#000a;
+  z-index:20;
+  font-size:14px;
+  color:#ffeb99;
 }
 </style>
 </head>
@@ -149,74 +90,56 @@ footer{
   <span>Acompanhamento dos Jogos</span>
 </header>
 
-<!-- RESULTADO -->
-<div class="resultado-card">
-  <h2>Resultado Oficial</h2>
-  <div class="resultado" id="resultado"></div>
-</div>
-
-<!-- LISTA -->
 <div class="lista" id="lista"></div>
 
-<footer>
-  Atualização em tempo real • Boa sorte 🍀
-</footer>
+<div class="loading" id="loading">Carregando jogos…</div>
 
 <script>
-const supabase = supabase.createClient(
+/* 🔒 NOME DIFERENTE */
+const db = supabase.createClient(
   'https://dxkszikemntfusfyrzos.supabase.co',
   'sb_publishable_NNFvdfSXgOdGGVcSbphbjQ_brC3_9ed'
 );
 
 let resultadoAtual = [];
 
-// carrega resultado
+/* BUSCA RESULTADO */
 async function carregarResultado(){
-  const {data} = await supabase
+  const { data, error } = await db
     .from('mega_resultado')
     .select('numeros')
     .order('created_at',{ascending:false})
     .limit(1)
     .single();
 
-  resultadoAtual = data?.numeros || [];
-  renderResultado();
-}
-
-// render topo
-function renderResultado(){
-  const div = document.getElementById('resultado');
-  div.innerHTML = '';
-
-  if(resultadoAtual.length === 0){
-    div.innerHTML = '<span style="color:#777">Ainda não informado</span>';
-    return;
+  if(error && error.code !== 'PGRST116'){
+    console.error(error);
   }
 
-  resultadoAtual.forEach(n=>{
-    div.innerHTML += `
-      <div class="bola hit">${String(n).padStart(2,'0')}</div>
-    `;
-  });
+  resultadoAtual = data?.numeros || [];
 }
 
-// carrega jogos
+/* BUSCA JOGOS */
 async function carregarJogos(){
-  const {data} = await supabase
+  const { data, error } = await db
     .from('mega_jogos')
     .select('*')
     .order('codigo');
+
+  if(error){
+    console.error(error);
+    return;
+  }
 
   const lista = document.getElementById('lista');
   lista.innerHTML = '';
 
   data.forEach(jogo=>{
-    const acertos = jogo.numeros.filter(n => resultadoAtual.includes(n)).length;
+    const acertos = jogo.numeros.filter(n=>resultadoAtual.includes(n)).length;
 
     lista.innerHTML += `
       <div class="card ${acertos===6?'win':''}">
         <h3>${jogo.codigo}</h3>
-
         <div class="numeros">
           ${jogo.numeros.map(n=>`
             <div class="num ${resultadoAtual.includes(n)?'hit':''}">
@@ -224,15 +147,14 @@ async function carregarJogos(){
             </div>
           `).join('')}
         </div>
-
-        <div class="acertos">
-          Acertos: ${acertos}
-        </div>
       </div>
     `;
   });
+
+  document.getElementById('loading').style.display='none';
 }
 
+/* INIT */
 async function init(){
   await carregarResultado();
   await carregarJogos();
@@ -240,10 +162,15 @@ async function init(){
 
 init();
 
-// realtime
-supabase.channel('mega-resultados')
+/* REALTIME */
+db.channel('mega-live')
 .on('postgres_changes',{
   event:'INSERT',
+  schema:'public',
+  table:'mega_resultado'
+},init)
+.on('postgres_changes',{
+  event:'UPDATE',
   schema:'public',
   table:'mega_resultado'
 },init)
