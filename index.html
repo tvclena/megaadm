@@ -2,24 +2,36 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
-<title>ADM Mega da Virada</title>
+<title>ADM • Mega da Virada</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
 <style>
+*{box-sizing:border-box;font-family:Inter,system-ui}
 body{
   margin:0;
   background:#0b0b0b;
   color:#fff;
-  font-family:Inter,system-ui;
 }
+
+/* HEADER */
 header{
   padding:16px;
   text-align:center;
+  border-bottom:1px solid #2a2200;
   color:#d4af37;
-  border-bottom:1px solid #333;
+  font-weight:700;
 }
+
+/* CONTAINER */
+.container{
+  padding:14px;
+  display:grid;
+  gap:14px;
+}
+
+/* BUTTON */
 button{
   width:100%;
   padding:14px;
@@ -29,31 +41,56 @@ button{
   color:#000;
   font-weight:700;
   font-size:15px;
+  cursor:pointer;
 }
-.lista{
-  padding:14px;
-  display:grid;
-  gap:12px;
-}
+
+/* CARD */
 .card{
   background:#141414;
-  border-radius:14px;
-  padding:12px;
+  border:1px solid #2a2200;
+  border-radius:16px;
+  padding:14px;
+}
+
+/* NUMEROS */
+.numeros{
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+  margin-top:8px;
 }
 .num{
-  width:32px;height:32px;
+  width:36px;height:36px;
   border-radius:50%;
-  display:inline-flex;
+  display:flex;
   align-items:center;
   justify-content:center;
-  margin:4px;
   background:#222;
+  border:1px solid #333;
+  font-size:14px;
+  cursor:pointer;
 }
 .num.hit{
   background:#22c55e;
   color:#000;
   font-weight:700;
 }
+
+/* METRICAS */
+.metricas{
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:10px;
+}
+.met{
+  background:#111;
+  border:1px solid #333;
+  border-radius:12px;
+  padding:10px;
+  text-align:center;
+  font-size:13px;
+}
+.met strong{color:#d4af37;font-size:18px}
 
 /* MODAL */
 .overlay{
@@ -63,12 +100,14 @@ button{
   display:none;
   align-items:center;
   justify-content:center;
+  z-index:10;
 }
 .modal{
   background:#141414;
   padding:20px;
-  border-radius:14px;
+  border-radius:16px;
   width:260px;
+  border:1px solid #333;
 }
 .modal input{
   width:100%;
@@ -87,16 +126,31 @@ button{
 
 <header>🎯 ADM Mega da Virada</header>
 
-<div class="lista">
-  <button onclick="abrir()">Inserir Número</button>
-  <div id="resultado"></div>
+<div class="container">
+
+  <!-- CONTROLE -->
+  <div class="card">
+    <button onclick="abrirModal()">Inserir Número</button>
+    <div class="numeros" id="resultado"></div>
+    <small style="opacity:.6">Duplo clique remove o número</small>
+  </div>
+
+  <!-- METRICAS -->
+  <div class="card">
+    <h3>Métricas</h3>
+    <div class="metricas" id="metricas"></div>
+  </div>
+
+  <!-- JOGOS -->
   <div id="jogos"></div>
+
 </div>
 
+<!-- MODAL -->
 <div class="overlay" id="overlay">
   <div class="modal">
-    <input id="numero" type="number" min="1" max="60" placeholder="1 a 60">
-    <button onclick="salvar()">Confirmar</button>
+    <input id="numeroInput" type="number" min="1" max="60" placeholder="1 a 60">
+    <button onclick="salvarNumero()">Confirmar</button>
   </div>
 </div>
 
@@ -106,15 +160,26 @@ const db = supabase.createClient(
   'sb_publishable_NNFvdfSXgOdGGVcSbphbjQ_brC3_9ed'
 );
 
+const resultadoDiv = document.getElementById('resultado');
+const jogosDiv = document.getElementById('jogos');
+const metricasDiv = document.getElementById('metricas');
+
 let resultado = [];
+let jogos = [];
+let carregando = false;
 
 /* MODAL */
-function abrir(){ overlay.style.display='flex'; numero.value=''; }
-function fechar(){ overlay.style.display='none'; }
+function abrirModal(){
+  overlay.style.display='flex';
+  numeroInput.value='';
+}
+function fecharModal(){
+  overlay.style.display='none';
+}
 
-/* BUSCA RESULTADO */
+/* CARREGA RESULTADO */
 async function carregarResultado(){
-  const {data} = await db
+  const { data } = await db
     .from('mega_resultado')
     .select('*')
     .order('created_at',{ascending:false})
@@ -122,12 +187,21 @@ async function carregarResultado(){
     .single();
 
   resultado = data?.numeros || [];
-  resultadoDiv.innerHTML = resultado.map(n=>`<span class="num hit">${n}</span>`).join('');
 }
 
-/* SALVAR NÚMERO */
-async function salvar(){
-  const n = parseInt(numero.value);
+/* CARREGA JOGOS */
+async function carregarJogos(){
+  const { data } = await db
+    .from('mega_jogos')
+    .select('*')
+    .order('codigo');
+
+  jogos = data || [];
+}
+
+/* SALVAR NUMERO */
+async function salvarNumero(){
+  const n = parseInt(numeroInput.value);
   if(!n || n<1 || n>60) return alert('Número inválido');
   if(resultado.includes(n)) return alert('Já inserido');
   if(resultado.length>=6) return alert('Resultado completo');
@@ -137,7 +211,7 @@ async function salvar(){
   if(resultado.length===0){
     await db.from('mega_resultado').insert({numeros:novo});
   }else{
-    const {data} = await db
+    const { data } = await db
       .from('mega_resultado')
       .select('id')
       .order('created_at',{ascending:false})
@@ -147,36 +221,84 @@ async function salvar(){
     await db.from('mega_resultado').update({numeros:novo}).eq('id',data.id);
   }
 
-  fechar();
+  fecharModal();
   init();
 }
 
-/* JOGOS */
-async function carregarJogos(){
-  const {data} = await db.from('mega_jogos').select('*').order('codigo');
-  jogos.innerHTML='';
-  data.forEach(j=>{
-    jogos.innerHTML+=`
+/* REMOVER NUMERO (DUPLO CLIQUE) */
+async function removerNumero(n){
+  const novo = resultado.filter(x=>x!==n);
+  const { data } = await db
+    .from('mega_resultado')
+    .select('id')
+    .order('created_at',{ascending:false})
+    .limit(1)
+    .single();
+
+  await db.from('mega_resultado').update({numeros:novo}).eq('id',data.id);
+  init();
+}
+
+/* RENDER */
+function render(){
+  // Resultado
+  resultadoDiv.innerHTML='';
+  resultado.forEach(n=>{
+    const el = document.createElement('div');
+    el.className='num hit';
+    el.textContent=String(n).padStart(2,'0');
+    el.ondblclick=()=>removerNumero(n);
+    resultadoDiv.appendChild(el);
+  });
+
+  // Jogos
+  jogosDiv.innerHTML='';
+  const contagem = {0:0,1:0,2:0,3:0,4:0,5:0,6:0};
+
+  jogos.forEach(j=>{
+    const acertos = j.numeros.filter(n=>resultado.includes(n)).length;
+    contagem[acertos]++;
+
+    jogosDiv.innerHTML+=`
       <div class="card">
-        <strong>${j.codigo}</strong><br>
-        ${j.numeros.map(n=>`<span class="num ${resultado.includes(n)?'hit':''}">${n}</span>`).join('')}
+        <strong>${j.codigo}</strong>
+        <div class="numeros">
+          ${j.numeros.map(n=>`
+            <div class="num ${resultado.includes(n)?'hit':''}">
+              ${String(n).padStart(2,'0')}
+            </div>
+          `).join('')}
+        </div>
+        <small>Acertos: ${acertos}</small>
+      </div>
+    `;
+  });
+
+  // Métricas
+  metricasDiv.innerHTML='';
+  Object.keys(contagem).forEach(k=>{
+    metricasDiv.innerHTML+=`
+      <div class="met">
+        <strong>${contagem[k]}</strong><br>${k} acertos
       </div>
     `;
   });
 }
 
+/* INIT + POLLING */
 async function init(){
+  if(carregando) return;
+  carregando=true;
+
   await carregarResultado();
   await carregarJogos();
+  render();
+
+  carregando=false;
 }
 
 init();
-
-/* REALTIME */
-db.channel('mega')
-.on('postgres_changes',{event:'INSERT',schema:'public',table:'mega_resultado'},init)
-.on('postgres_changes',{event:'UPDATE',schema:'public',table:'mega_resultado'},init)
-.subscribe();
+setInterval(init, 3000);
 </script>
 
 </body>
