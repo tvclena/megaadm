@@ -2,68 +2,52 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
-<title>ADM • Mega da Virada</title>
+<title>ADM Mega da Virada</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
 <style>
-*{box-sizing:border-box;font-family:Inter,system-ui}
 body{
   margin:0;
-  background:radial-gradient(circle at top,#3a2c00,#0b0b0b);
+  background:#0b0b0b;
   color:#fff;
+  font-family:Inter,system-ui;
 }
 header{
   padding:16px;
   text-align:center;
-  border-bottom:1px solid #d4af3744;
-}
-header h1{
-  margin:0;
   color:#d4af37;
-  font-size:18px;
-}
-.container{
-  padding:14px;
-  display:grid;
-  gap:14px;
-}
-.card{
-  background:#141414;
-  border:1px solid #d4af3744;
-  border-radius:16px;
-  padding:14px;
-}
-.card.win{
-  background:#16a34a;
-  border-color:#22c55e;
-  color:#000;
+  border-bottom:1px solid #333;
 }
 button{
   width:100%;
-  padding:12px;
+  padding:14px;
   border:none;
   border-radius:12px;
   background:#d4af37;
   color:#000;
   font-weight:700;
-  cursor:pointer;
+  font-size:15px;
 }
-.numeros{
-  display:flex;
-  flex-wrap:wrap;
-  gap:6px;
+.lista{
+  padding:14px;
+  display:grid;
+  gap:12px;
+}
+.card{
+  background:#141414;
+  border-radius:14px;
+  padding:12px;
 }
 .num{
   width:32px;height:32px;
   border-radius:50%;
-  display:flex;
+  display:inline-flex;
   align-items:center;
   justify-content:center;
-  font-size:13px;
-  background:#1f1f1f;
-  border:1px solid #333;
+  margin:4px;
+  background:#222;
 }
 .num.hit{
   background:#22c55e;
@@ -71,32 +55,24 @@ button{
   font-weight:700;
 }
 
-/* POPUP */
+/* MODAL */
 .overlay{
   position:fixed;
   inset:0;
-  background:rgba(0,0,0,.75);
+  background:#000c;
   display:none;
   align-items:center;
   justify-content:center;
-  z-index:10;
 }
 .modal{
-  width:90%;
-  max-width:300px;
   background:#141414;
-  border-radius:16px;
-  padding:16px;
-  border:1px solid #d4af3744;
-  text-align:center;
-}
-.modal h3{
-  margin:0 0 10px;
-  color:#ffeb99;
+  padding:20px;
+  border-radius:14px;
+  width:260px;
 }
 .modal input{
   width:100%;
-  padding:12px;
+  padding:14px;
   font-size:18px;
   text-align:center;
   border-radius:10px;
@@ -104,40 +80,28 @@ button{
   background:#0f0f0f;
   color:#fff;
 }
-.modal button{
-  margin-top:12px;
-}
 </style>
 </head>
 
 <body>
 
-<header>
-  <h1>🎯 ADM Mega da Virada</h1>
-</header>
+<header>🎯 ADM Mega da Virada</header>
 
-<div class="container">
-
-  <div class="card">
-    <button onclick="abrirModal()">Inserir Número</button>
-    <div class="numeros" id="resultadoAtual"></div>
-  </div>
-
-  <div id="lista"></div>
-
+<div class="lista">
+  <button onclick="abrir()">Inserir Número</button>
+  <div id="resultado"></div>
+  <div id="jogos"></div>
 </div>
 
-<!-- POPUP -->
 <div class="overlay" id="overlay">
   <div class="modal">
-    <h3>Digite o número</h3>
-    <input id="numeroInput" type="number" min="1" max="60" placeholder="1 a 60">
-    <button onclick="salvarNumero()">Confirmar</button>
+    <input id="numero" type="number" min="1" max="60" placeholder="1 a 60">
+    <button onclick="salvar()">Confirmar</button>
   </div>
 </div>
 
 <script>
-const client = supabase.createClient(
+const db = supabase.createClient(
   'https://dxkszikemntfusfyrzos.supabase.co',
   'sb_publishable_NNFvdfSXgOdGGVcSbphbjQ_brC3_9ed'
 );
@@ -145,17 +109,12 @@ const client = supabase.createClient(
 let resultado = [];
 
 /* MODAL */
-function abrirModal(){
-  document.getElementById('numeroInput').value='';
-  document.getElementById('overlay').style.display='flex';
-}
-function fecharModal(){
-  document.getElementById('overlay').style.display='none';
-}
+function abrir(){ overlay.style.display='flex'; numero.value=''; }
+function fechar(){ overlay.style.display='none'; }
 
-/* CARREGA RESULTADO ATUAL */
+/* BUSCA RESULTADO */
 async function carregarResultado(){
-  const { data } = await client
+  const {data} = await db
     .from('mega_resultado')
     .select('*')
     .order('created_at',{ascending:false})
@@ -163,85 +122,49 @@ async function carregarResultado(){
     .single();
 
   resultado = data?.numeros || [];
-  renderResultadoAtual();
+  resultadoDiv.innerHTML = resultado.map(n=>`<span class="num hit">${n}</span>`).join('');
 }
 
-/* RENDER RESULTADO */
-function renderResultadoAtual(){
-  const div = document.getElementById('resultadoAtual');
-  div.innerHTML='';
-  resultado.forEach(n=>{
-    div.innerHTML += `<div class="num hit">${String(n).padStart(2,'0')}</div>`;
-  });
-}
+/* SALVAR NÚMERO */
+async function salvar(){
+  const n = parseInt(numero.value);
+  if(!n || n<1 || n>60) return alert('Número inválido');
+  if(resultado.includes(n)) return alert('Já inserido');
+  if(resultado.length>=6) return alert('Resultado completo');
 
-/* SALVA NÚMERO INDIVIDUAL */
-async function salvarNumero(){
-  const n = parseInt(document.getElementById('numeroInput').value);
+  const novo = [...resultado, n];
 
-  if(!n || n<1 || n>60){
-    alert('Número inválido');
-    return;
-  }
-  if(resultado.includes(n)){
-    alert('Número já inserido');
-    return;
-  }
-  if(resultado.length >= 6){
-    alert('Resultado já completo');
-    return;
-  }
-
-  let novos = [...resultado, n];
-
-  if(resultado.length === 0){
-    await client.from('mega_resultado').insert({ numeros: novos });
-  } else {
-    const { data } = await client
+  if(resultado.length===0){
+    await db.from('mega_resultado').insert({numeros:novo});
+  }else{
+    const {data} = await db
       .from('mega_resultado')
       .select('id')
       .order('created_at',{ascending:false})
       .limit(1)
       .single();
 
-    await client
-      .from('mega_resultado')
-      .update({ numeros: novos })
-      .eq('id', data.id);
+    await db.from('mega_resultado').update({numeros:novo}).eq('id',data.id);
   }
 
-  fecharModal();
+  fechar();
   init();
 }
 
 /* JOGOS */
 async function carregarJogos(){
-  const { data } = await client
-    .from('mega_jogos')
-    .select('*')
-    .order('codigo');
-
-  const lista = document.getElementById('lista');
-  lista.innerHTML='';
-
+  const {data} = await db.from('mega_jogos').select('*').order('codigo');
+  jogos.innerHTML='';
   data.forEach(j=>{
-    const acertos = j.numeros.filter(n=>resultado.includes(n)).length;
-    lista.innerHTML += `
-      <div class="card ${acertos===6?'win':''}">
-        <strong>${j.codigo}</strong>
-        <div class="numeros">
-          ${j.numeros.map(n=>`
-            <div class="num ${resultado.includes(n)?'hit':''}">
-              ${String(n).padStart(2,'0')}
-            </div>
-          `).join('')}
-        </div>
+    jogos.innerHTML+=`
+      <div class="card">
+        <strong>${j.codigo}</strong><br>
+        ${j.numeros.map(n=>`<span class="num ${resultado.includes(n)?'hit':''}">${n}</span>`).join('')}
       </div>
     `;
   });
 }
 
-/* INIT */
 async function init(){
   await carregarResultado();
   await carregarJogos();
@@ -250,12 +173,9 @@ async function init(){
 init();
 
 /* REALTIME */
-client.channel('mega-realtime')
-.on('postgres_changes',{
-  event:'UPDATE',
-  schema:'public',
-  table:'mega_resultado'
-},init)
+db.channel('mega')
+.on('postgres_changes',{event:'INSERT',schema:'public',table:'mega_resultado'},init)
+.on('postgres_changes',{event:'UPDATE',schema:'public',table:'mega_resultado'},init)
 .subscribe();
 </script>
 
