@@ -18,36 +18,50 @@ body{
 
 /* HEADER */
 header{
-  padding:18px 14px;
+  padding:14px 12px;
   text-align:center;
   background:linear-gradient(180deg,#1a1400,#0b0b0b);
   border-bottom:1px solid #d4af3744;
 }
 header h1{
   margin:0;
-  font-size:20px;
+  font-size:18px;
   color:#d4af37;
 }
 header span{
-  font-size:13px;
+  font-size:12px;
   color:#ffeb99;
 }
 
-/* RESULTADO TOPO */
+/* RESULTADO CARD */
+.resultado-card{
+  margin:14px;
+  padding:14px;
+  background:#141414;
+  border:1px solid #d4af3744;
+  border-radius:18px;
+  text-align:center;
+}
+.resultado-card h2{
+  margin:0 0 10px;
+  font-size:14px;
+  color:#ffeb99;
+}
+
 .resultado{
   display:flex;
   justify-content:center;
   gap:10px;
-  padding:16px 10px;
   flex-wrap:wrap;
 }
 .bola{
-  width:42px;height:42px;
+  width:44px;height:44px;
   border-radius:50%;
   display:flex;
   align-items:center;
   justify-content:center;
   font-weight:700;
+  font-size:15px;
   background:#1f1f1f;
   border:2px solid #333;
 }
@@ -70,6 +84,7 @@ header span{
   border:1px solid #d4af3744;
   border-radius:18px;
   padding:14px;
+  box-shadow:0 6px 16px rgba(0,0,0,.35);
 }
 
 .card.win{
@@ -79,8 +94,9 @@ header span{
 }
 
 .card h3{
-  margin:0 0 8px;
-  font-size:14px;
+  margin:0 0 6px;
+  font-size:13px;
+  letter-spacing:.4px;
   color:#ffeb99;
 }
 
@@ -89,6 +105,7 @@ header span{
   display:flex;
   flex-wrap:wrap;
   gap:8px;
+  margin-top:6px;
 }
 .num{
   width:34px;height:34px;
@@ -110,15 +127,16 @@ header span{
 /* ACERTOS */
 .acertos{
   margin-top:8px;
-  font-size:13px;
+  font-size:12px;
   font-weight:600;
+  opacity:.9;
 }
 
 /* FOOTER */
 footer{
   text-align:center;
-  padding:16px;
-  font-size:12px;
+  padding:14px;
+  font-size:11px;
   color:#777;
 }
 </style>
@@ -132,7 +150,10 @@ footer{
 </header>
 
 <!-- RESULTADO -->
-<div class="resultado" id="resultado"></div>
+<div class="resultado-card">
+  <h2>Resultado Oficial</h2>
+  <div class="resultado" id="resultado"></div>
+</div>
 
 <!-- LISTA -->
 <div class="lista" id="lista"></div>
@@ -168,15 +189,13 @@ function renderResultado(){
   div.innerHTML = '';
 
   if(resultadoAtual.length === 0){
-    div.innerHTML = '<span style="color:#777">Resultado ainda não informado</span>';
+    div.innerHTML = '<span style="color:#777">Ainda não informado</span>';
     return;
   }
 
   resultadoAtual.forEach(n=>{
     div.innerHTML += `
-      <div class="bola hit">
-        ${String(n).padStart(2,'0')}
-      </div>
+      <div class="bola hit">${String(n).padStart(2,'0')}</div>
     `;
   });
 }
@@ -214,7 +233,6 @@ async function carregarJogos(){
   });
 }
 
-// init
 async function init(){
   await carregarResultado();
   await carregarJogos();
