@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
-<title>Mega da Virada • Resultados</title>
+<title>Mega da Virada • Acompanhamento</title>
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
@@ -18,7 +18,7 @@ body{
 
 /* HEADER */
 header{
-  padding:18px;
+  padding:18px 14px;
   text-align:center;
   background:linear-gradient(180deg,#1a1400,#0b0b0b);
   border-bottom:1px solid #d4af3744;
@@ -27,19 +27,19 @@ header h1{
   margin:0;
   font-size:20px;
   color:#d4af37;
-  letter-spacing:.5px;
 }
 header span{
   font-size:13px;
   color:#ffeb99;
 }
 
-/* RESULTADO */
+/* RESULTADO TOPO */
 .resultado{
   display:flex;
   justify-content:center;
   gap:10px;
-  padding:16px;
+  padding:16px 10px;
+  flex-wrap:wrap;
 }
 .bola{
   width:42px;height:42px;
@@ -57,34 +57,39 @@ header span{
   border-color:#22c55e;
 }
 
-/* LISTA */
+/* LISTA DE JOGOS */
 .lista{
   padding:14px;
   display:grid;
   grid-template-columns:1fr;
-  gap:12px;
+  gap:14px;
 }
 
 .card{
   background:#141414;
   border:1px solid #d4af3744;
-  border-radius:16px;
+  border-radius:18px;
   padding:14px;
 }
 
-.card h3{
-  margin:0 0 10px;
-  font-size:14px;
-  color:#ffeb99;
-  letter-spacing:.4px;
+.card.win{
+  background:#16a34a;
+  border-color:#22c55e;
+  color:#000;
 }
 
+.card h3{
+  margin:0 0 8px;
+  font-size:14px;
+  color:#ffeb99;
+}
+
+/* NUMEROS */
 .numeros{
   display:flex;
   flex-wrap:wrap;
   gap:8px;
 }
-
 .num{
   width:34px;height:34px;
   border-radius:50%;
@@ -95,7 +100,6 @@ header span{
   background:#1f1f1f;
   border:1px solid #333;
 }
-
 .num.hit{
   background:#22c55e;
   color:#000;
@@ -103,10 +107,17 @@ header span{
   font-weight:700;
 }
 
+/* ACERTOS */
+.acertos{
+  margin-top:8px;
+  font-size:13px;
+  font-weight:600;
+}
+
 /* FOOTER */
 footer{
   text-align:center;
-  padding:14px;
+  padding:16px;
   font-size:12px;
   color:#777;
 }
@@ -120,8 +131,10 @@ footer{
   <span>Acompanhamento dos Jogos</span>
 </header>
 
+<!-- RESULTADO -->
 <div class="resultado" id="resultado"></div>
 
+<!-- LISTA -->
 <div class="lista" id="lista"></div>
 
 <footer>
@@ -149,12 +162,22 @@ async function carregarResultado(){
   renderResultado();
 }
 
-// render resultado topo
+// render topo
 function renderResultado(){
   const div = document.getElementById('resultado');
   div.innerHTML = '';
+
+  if(resultadoAtual.length === 0){
+    div.innerHTML = '<span style="color:#777">Resultado ainda não informado</span>';
+    return;
+  }
+
   resultadoAtual.forEach(n=>{
-    div.innerHTML += `<div class="bola hit">${String(n).padStart(2,'0')}</div>`;
+    div.innerHTML += `
+      <div class="bola hit">
+        ${String(n).padStart(2,'0')}
+      </div>
+    `;
   });
 }
 
@@ -169,9 +192,12 @@ async function carregarJogos(){
   lista.innerHTML = '';
 
   data.forEach(jogo=>{
+    const acertos = jogo.numeros.filter(n => resultadoAtual.includes(n)).length;
+
     lista.innerHTML += `
-      <div class="card">
+      <div class="card ${acertos===6?'win':''}">
         <h3>${jogo.codigo}</h3>
+
         <div class="numeros">
           ${jogo.numeros.map(n=>`
             <div class="num ${resultadoAtual.includes(n)?'hit':''}">
@@ -179,12 +205,16 @@ async function carregarJogos(){
             </div>
           `).join('')}
         </div>
+
+        <div class="acertos">
+          Acertos: ${acertos}
+        </div>
       </div>
     `;
   });
 }
 
-// inicialização
+// init
 async function init(){
   await carregarResultado();
   await carregarJogos();
@@ -193,7 +223,7 @@ async function init(){
 init();
 
 // realtime
-supabase.channel('mega-virada')
+supabase.channel('mega-resultados')
 .on('postgres_changes',{
   event:'INSERT',
   schema:'public',
