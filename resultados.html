@@ -95,26 +95,22 @@ header span{font-size:12px;color:#ffeb99}
 <div class="loading" id="loading">Carregando jogos…</div>
 
 <script>
-/* 🔒 NOME DIFERENTE */
 const db = supabase.createClient(
   'https://dxkszikemntfusfyrzos.supabase.co',
   'sb_publishable_NNFvdfSXgOdGGVcSbphbjQ_brC3_9ed'
 );
 
 let resultadoAtual = [];
+let carregando = false;
 
 /* BUSCA RESULTADO */
 async function carregarResultado(){
-  const { data, error } = await db
+  const { data } = await db
     .from('mega_resultado')
     .select('numeros')
-    .order('created_at',{ascending:false})
+    .order('created_at',{ ascending:false })
     .limit(1)
     .single();
-
-  if(error && error.code !== 'PGRST116'){
-    console.error(error);
-  }
 
   resultadoAtual = data?.numeros || [];
 }
@@ -154,28 +150,24 @@ async function carregarJogos(){
   document.getElementById('loading').style.display='none';
 }
 
-/* INIT */
+/* INIT COM PROTEÇÃO */
 async function init(){
+  if(carregando) return;
+  carregando = true;
+
   await carregarResultado();
   await carregarJogos();
+
+  carregando = false;
 }
 
+/* PRIMEIRA CARGA */
 init();
 
-/* REALTIME */
-db.channel('mega-live')
-.on('postgres_changes',{
-  event:'INSERT',
-  schema:'public',
-  table:'mega_resultado'
-},init)
-.on('postgres_changes',{
-  event:'UPDATE',
-  schema:'public',
-  table:'mega_resultado'
-},init)
-.subscribe();
+/* 🔁 POLLING A CADA 3 SEGUNDOS */
+setInterval(init, 3000);
 </script>
+
 
 </body>
 </html>
