@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>Mega da Virada • Resultados</title>
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<style>
+*{box-sizing:border-box;font-family:Inter,system-ui}
+body{
+  margin:0;
+  background:radial-gradient(circle at top,#3a2c00,#0b0b0b);
+  color:#fff;
+}
+
+/* HEADER */
+header{
+  padding:18px;
+  text-align:center;
+  background:linear-gradient(180deg,#1a1400,#0b0b0b);
+  border-bottom:1px solid #d4af3744;
+}
+header h1{
+  margin:0;
+  font-size:20px;
+  color:#d4af37;
+  letter-spacing:.5px;
+}
+header span{
+  font-size:13px;
+  color:#ffeb99;
+}
+
+/* RESULTADO */
+.resultado{
+  display:flex;
+  justify-content:center;
+  gap:10px;
+  padding:16px;
+}
+.bola{
+  width:42px;height:42px;
+  border-radius:50%;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-weight:700;
+  background:#1f1f1f;
+  border:2px solid #333;
+}
+.bola.hit{
+  background:#22c55e;
+  color:#000;
+  border-color:#22c55e;
+}
+
+/* LISTA */
+.lista{
+  padding:14px;
+  display:grid;
+  grid-template-columns:1fr;
+  gap:12px;
+}
+
+.card{
+  background:#141414;
+  border:1px solid #d4af3744;
+  border-radius:16px;
+  padding:14px;
+}
+
+.card h3{
+  margin:0 0 10px;
+  font-size:14px;
+  color:#ffeb99;
+  letter-spacing:.4px;
+}
+
+.numeros{
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+}
+
+.num{
+  width:34px;height:34px;
+  border-radius:50%;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:13px;
+  background:#1f1f1f;
+  border:1px solid #333;
+}
+
+.num.hit{
+  background:#22c55e;
+  color:#000;
+  border-color:#22c55e;
+  font-weight:700;
+}
+
+/* FOOTER */
+footer{
+  text-align:center;
+  padding:14px;
+  font-size:12px;
+  color:#777;
+}
+</style>
+</head>
+
+<body>
+
+<header>
+  <h1>🎆 Mega da Virada</h1>
+  <span>Acompanhamento dos Jogos</span>
+</header>
+
+<div class="resultado" id="resultado"></div>
+
+<div class="lista" id="lista"></div>
+
+<footer>
+  Atualização em tempo real • Boa sorte 🍀
+</footer>
+
+<script>
+const supabase = supabase.createClient(
+  'https://dxkszikemntfusfyrzos.supabase.co',
+  'sb_publishable_NNFvdfSXgOdGGVcSbphbjQ_brC3_9ed'
+);
+
+let resultadoAtual = [];
+
+// carrega resultado
+async function carregarResultado(){
+  const {data} = await supabase
+    .from('mega_resultado')
+    .select('numeros')
+    .order('created_at',{ascending:false})
+    .limit(1)
+    .single();
+
+  resultadoAtual = data?.numeros || [];
+  renderResultado();
+}
+
+// render resultado topo
+function renderResultado(){
+  const div = document.getElementById('resultado');
+  div.innerHTML = '';
+  resultadoAtual.forEach(n=>{
+    div.innerHTML += `<div class="bola hit">${String(n).padStart(2,'0')}</div>`;
+  });
+}
+
+// carrega jogos
+async function carregarJogos(){
+  const {data} = await supabase
+    .from('mega_jogos')
+    .select('*')
+    .order('codigo');
+
+  const lista = document.getElementById('lista');
+  lista.innerHTML = '';
+
+  data.forEach(jogo=>{
+    lista.innerHTML += `
+      <div class="card">
+        <h3>${jogo.codigo}</h3>
+        <div class="numeros">
+          ${jogo.numeros.map(n=>`
+            <div class="num ${resultadoAtual.includes(n)?'hit':''}">
+              ${String(n).padStart(2,'0')}
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    `;
+  });
+}
+
+// inicialização
+async function init(){
+  await carregarResultado();
+  await carregarJogos();
+}
+
+init();
+
+// realtime
+supabase.channel('mega-virada')
+.on('postgres_changes',{
+  event:'INSERT',
+  schema:'public',
+  table:'mega_resultado'
+},init)
+.subscribe();
+</script>
+
+</body>
+</html>
