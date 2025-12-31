@@ -11,88 +11,108 @@
 *{box-sizing:border-box;font-family:Inter,system-ui}
 body{
   margin:0;
-  background:radial-gradient(circle at top,#3a2c00,#0b0b0b);
+  background:#0b0b0b;
   color:#fff;
 }
 
 /* HEADER */
 header{
-  padding:14px;
+  padding:16px;
   text-align:center;
-  background:linear-gradient(180deg,#1a1400,#0b0b0b);
-  border-bottom:1px solid #d4af3744;
+  border-bottom:1px solid #2a2200;
+  color:#d4af37;
+  font-weight:700;
 }
-header h1{margin:0;color:#d4af37;font-size:18px}
-header span{font-size:12px;color:#ffeb99}
 
-/* LISTA */
-.lista{
+/* CONTAINER */
+.container{
   padding:14px;
   display:grid;
-  grid-template-columns:1fr;
   gap:14px;
 }
+
+/* CARD */
 .card{
   background:#141414;
-  border:1px solid #d4af3744;
-  border-radius:18px;
+  border:1px solid #2a2200;
+  border-radius:16px;
   padding:14px;
-}
-.card.win{
-  background:#16a34a;
-  border-color:#22c55e;
-  color:#000;
-}
-.card h3{
-  margin:0 0 6px;
-  font-size:13px;
-  color:#ffeb99;
 }
 
 /* NUMEROS */
-.numeros{display:flex;flex-wrap:wrap;gap:8px}
+.numeros{
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+  margin-top:8px;
+}
 .num{
-  width:34px;height:34px;
+  width:36px;height:36px;
   border-radius:50%;
   display:flex;
   align-items:center;
   justify-content:center;
-  background:#1f1f1f;
+  background:#222;
   border:1px solid #333;
-  font-size:13px;
+  font-size:14px;
 }
 .num.hit{
   background:#22c55e;
   color:#000;
-  border-color:#22c55e;
   font-weight:700;
 }
 
-/* LOADING */
-.loading{
-  position:fixed;
-  inset:0;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  background:#000a;
-  z-index:20;
-  font-size:14px;
-  color:#ffeb99;
+/* METRICAS */
+.metricas{
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:10px;
+}
+.met{
+  background:#111;
+  border:1px solid #333;
+  border-radius:12px;
+  padding:10px;
+  text-align:center;
+  font-size:13px;
+}
+.met strong{
+  color:#d4af37;
+  font-size:18px;
+}
+
+/* JOGOS */
+.jogo{
+  margin-top:10px;
+}
+.jogo small{
+  opacity:.7;
 }
 </style>
 </head>
 
 <body>
 
-<header>
-  <h1>🎆 Mega da Virada</h1>
-  <span>Acompanhamento dos Jogos</span>
-</header>
+<header>🎆 Mega da Virada • Resultados</header>
 
-<div class="lista" id="lista"></div>
+<div class="container">
 
-<div class="loading" id="loading">Carregando jogos…</div>
+  <!-- RESULTADO -->
+  <div class="card">
+    <h3>Números Sorteados</h3>
+    <div class="numeros" id="resultado"></div>
+  </div>
+
+  <!-- METRICAS -->
+  <div class="card">
+    <h3>Métricas</h3>
+    <div class="metricas" id="metricas"></div>
+  </div>
+
+  <!-- JOGOS -->
+  <div id="jogos"></div>
+
+</div>
 
 <script>
 const db = supabase.createClient(
@@ -100,74 +120,95 @@ const db = supabase.createClient(
   'sb_publishable_NNFvdfSXgOdGGVcSbphbjQ_brC3_9ed'
 );
 
-let resultadoAtual = [];
+const resultadoDiv = document.getElementById('resultado');
+const metricasDiv = document.getElementById('metricas');
+const jogosDiv = document.getElementById('jogos');
+
+let resultado = [];
+let jogos = [];
 let carregando = false;
 
-/* BUSCA RESULTADO */
+/* CARREGA RESULTADO */
 async function carregarResultado(){
   const { data } = await db
     .from('mega_resultado')
-    .select('numeros')
-    .order('created_at',{ ascending:false })
+    .select('*')
+    .order('created_at',{ascending:false})
     .limit(1)
     .single();
 
-  resultadoAtual = data?.numeros || [];
+  resultado = data?.numeros || [];
 }
 
-/* BUSCA JOGOS */
+/* CARREGA JOGOS */
 async function carregarJogos(){
-  const { data, error } = await db
+  const { data } = await db
     .from('mega_jogos')
     .select('*')
     .order('codigo');
 
-  if(error){
-    console.error(error);
-    return;
-  }
+  jogos = data || [];
+}
 
-  const lista = document.getElementById('lista');
-  lista.innerHTML = '';
+/* RENDER */
+function render(){
+  // Resultado
+  resultadoDiv.innerHTML='';
+  resultado.forEach(n=>{
+    const el = document.createElement('div');
+    el.className='num hit';
+    el.textContent=String(n).padStart(2,'0');
+    resultadoDiv.appendChild(el);
+  });
 
-  data.forEach(jogo=>{
-    const acertos = jogo.numeros.filter(n=>resultadoAtual.includes(n)).length;
+  // Jogos + métricas
+  jogosDiv.innerHTML='';
+  metricasDiv.innerHTML='';
+  const contagem = {0:0,1:0,2:0,3:0,4:0,5:0,6:0};
 
-    lista.innerHTML += `
-      <div class="card ${acertos===6?'win':''}">
-        <h3>${jogo.codigo}</h3>
+  jogos.forEach(j=>{
+    const acertos = j.numeros.filter(n=>resultado.includes(n)).length;
+    contagem[acertos]++;
+
+    jogosDiv.innerHTML += `
+      <div class="card jogo">
+        <strong>${j.codigo}</strong>
         <div class="numeros">
-          ${jogo.numeros.map(n=>`
-            <div class="num ${resultadoAtual.includes(n)?'hit':''}">
+          ${j.numeros.map(n=>`
+            <div class="num ${resultado.includes(n)?'hit':''}">
               ${String(n).padStart(2,'0')}
             </div>
           `).join('')}
         </div>
+        <small>Acertos: ${acertos}</small>
       </div>
     `;
   });
 
-  document.getElementById('loading').style.display='none';
+  Object.keys(contagem).forEach(k=>{
+    metricasDiv.innerHTML += `
+      <div class="met">
+        <strong>${contagem[k]}</strong><br>${k} acertos
+      </div>
+    `;
+  });
 }
 
-/* INIT COM PROTEÇÃO */
+/* INIT + POLLING */
 async function init(){
   if(carregando) return;
   carregando = true;
 
   await carregarResultado();
   await carregarJogos();
+  render();
 
   carregando = false;
 }
 
-/* PRIMEIRA CARGA */
 init();
-
-/* 🔁 POLLING A CADA 3 SEGUNDOS */
 setInterval(init, 3000);
 </script>
-
 
 </body>
 </html>
